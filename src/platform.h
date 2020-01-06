@@ -38,8 +38,9 @@
 #else
     // Posix-y systems:
     #include <sys/mman.h>
-    #include <sys/stat.h>
 #endif
+
+#include <sys/stat.h>
 
 #ifdef WIN32
     #define snprintf _snprintf

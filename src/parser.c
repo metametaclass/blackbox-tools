@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <assert.h>
+#include <time.h>
 
 #include "parser.h"
 #include "tools.h"
