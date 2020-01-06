@@ -1,10 +1,12 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <limits.h>
+#include <assert.h>
 
 #include "tools.h"
 
 #include "encoder_testbed_io.h"
+
 
 uint32_t blackboxWrittenBytes;
 
@@ -134,7 +136,20 @@ void blackboxFlushBits() {
  */
 static int numBitsToStoreInteger(uint32_t i)
 {
+#if _WIN32
+    assert(i<>0);
+    uint32_t trailing_zero = 0;
+    if (_BitScanReverse(&trailing_zero, i))
+    {
+        return sizeof(i) * CHAR_BIT - trailing_zero;
+    }
+    else
+    {
+        return 0;
+    }
+#else
     return sizeof(i) * CHAR_BIT - __builtin_clz(i);
+#endif
 }
 
 void blackboxWriteU32EliasDelta(uint32_t value)
