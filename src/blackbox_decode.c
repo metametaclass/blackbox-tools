@@ -36,7 +36,7 @@
 #define MIN_GPS_SATELLITES 5
 
 typedef struct decodeOptions_t {
-    int help, raw, limits, debug, toStdout;
+    int help, version, raw, limits, debug, toStdout;
     int logNumber;
     int simulateIMU, imuIgnoreMag;
     int simulateCurrentMeter;
@@ -51,7 +51,7 @@ typedef struct decodeOptions_t {
 } decodeOptions_t;
 
 decodeOptions_t options = {
-    .help = 0, .raw = 0, .limits = 0, .debug = 0, .toStdout = 0,
+    .help = 0, .version = 0, .raw = 0, .limits = 0, .debug = 0, .toStdout = 0,
     .logNumber = -1,
     .simulateIMU = false, .imuIgnoreMag = 0,
     .simulateCurrentMeter = false,
@@ -429,7 +429,7 @@ void outputGPSFields(flightLog_t *log, FILE *file, int64_t *frame)
                 degrees = frame[i] / 10000000;
                 fracDegrees = llabs(frame[i]) % 10000000;
 
-		        char *sign = ((frame[i] < 0) && (degrees == 0)) ? negSign : noSign;
+                char *sign = ((frame[i] < 0) && (degrees == 0)) ? negSign : noSign;
                 fprintf(file, "%s%d.%07u", sign, degrees, fracDegrees);
             break;
             case GPS_FIELD_TYPE_DEGREES_TIMES_10:
@@ -488,11 +488,11 @@ void outputGPSFrame(flightLog_t *log, int64_t *frame)
         gpsFrameTime = lastFrameTime;
     }
 
-	bool haveRequiredFields = log->gpsFieldIndexes.GPS_coord[0] != -1 && log->gpsFieldIndexes.GPS_coord[1] != -1 && log->gpsFieldIndexes.GPS_altitude != -1;
-	bool haveRequiredPrecision = log->gpsFieldIndexes.GPS_numSat == -1 || frame[log->gpsFieldIndexes.GPS_numSat] >= MIN_GPS_SATELLITES;
+    bool haveRequiredFields = log->gpsFieldIndexes.GPS_coord[0] != -1 && log->gpsFieldIndexes.GPS_coord[1] != -1 && log->gpsFieldIndexes.GPS_altitude != -1;
+    bool haveRequiredPrecision = log->gpsFieldIndexes.GPS_numSat == -1 || frame[log->gpsFieldIndexes.GPS_numSat] >= MIN_GPS_SATELLITES;
 
     if (haveRequiredFields && haveRequiredPrecision) {
-		gpxWriterAddPoint(gpx, log->dateTime, gpsFrameTime, frame[log->gpsFieldIndexes.GPS_coord[0]], frame[log->gpsFieldIndexes.GPS_coord[1]], getAltitude(log, frame));
+        gpxWriterAddPoint(gpx, log->dateTime, gpsFrameTime, frame[log->gpsFieldIndexes.GPS_coord[0]], frame[log->gpsFieldIndexes.GPS_coord[1]], getAltitude(log, frame));
     }
 
     createGPSCSVFile(log);
@@ -663,8 +663,8 @@ void onFrameReadyMerge(flightLog_t *log, bool frameValid, int64_t *frame, uint8_
                 outputMergeFrame(log);
 
                 // We need at least lat/lon/altitude from the log to write a useful GPX track
-				bool haveRequiredFields = log->gpsFieldIndexes.GPS_coord[0] != -1 && log->gpsFieldIndexes.GPS_coord[1] != -1 && log->gpsFieldIndexes.GPS_altitude != -1;
-				bool haveRequiredPrecision = log->gpsFieldIndexes.GPS_numSat == -1 || frame[log->gpsFieldIndexes.GPS_numSat] >= MIN_GPS_SATELLITES;
+                bool haveRequiredFields = log->gpsFieldIndexes.GPS_coord[0] != -1 && log->gpsFieldIndexes.GPS_coord[1] != -1 && log->gpsFieldIndexes.GPS_altitude != -1;
+                bool haveRequiredPrecision = log->gpsFieldIndexes.GPS_numSat == -1 || frame[log->gpsFieldIndexes.GPS_numSat] >= MIN_GPS_SATELLITES;
 
                 if (haveRequiredFields && haveRequiredPrecision) {
                     gpxWriterAddPoint(gpx, log->dateTime, gpsFrameTime, frame[log->gpsFieldIndexes.GPS_coord[0]], frame[log->gpsFieldIndexes.GPS_coord[1]], getAltitude(log, frame));
@@ -758,7 +758,7 @@ void onFrameReady(flightLog_t *log, bool frameValid, int64_t *frame, uint8_t fra
                     fprintf(csvFile, ", %c, offset %d, size %d\n", (char) frameType, frameOffset, frameSize);
                 } else {
                     fprintf(csvFile, "\n");
-				}
+                }
             } else if (options.debug) {
                 // Print to stdout so that these messages line up with our other output on stdout (stderr isn't synchronised to it)
                 if (frame) {
@@ -1196,18 +1196,25 @@ int validateLogIndex(flightLog_t *log)
     }
 }
 
-void printUsage(const char *argv0)
+void printVersion()
 {
     fprintf(stderr,
         "Blackbox flight log decoder by Nicholas Sherlock ("
 #ifdef BLACKBOX_VERSION
             "v" STR(BLACKBOX_VERSION) ", "
 #endif
-            __DATE__ " " __TIME__ ")\n\n"
+         __DATE__ " " __TIME__ ")\n\n");
+}
+
+void printUsage(const char *argv0)
+{
+    printVersion();
+    fprintf(stderr,
         "Usage:\n"
         "     %s [options] <input logs>\n\n"
         "Options:\n"
         "   --help                   This page\n"
+        "   --version                Show version\n"
         "   --index <num>            Choose the log from the file that should be decoded (or omit to decode all)\n"
         "   --limits                 Print the limits and range of each field\n"
         "   --stdout                 Write log to stdout instead of to a file\n"
@@ -1219,7 +1226,7 @@ void printUsage(const char *argv0)
         "   --unit-acceleration <u>  Acceleration unit (raw|g|m/s2), default is raw\n"
         "   --unit-gps-speed <unit>  GPS speed unit (mps|kph|mph), default is mps (meters per second)\n"
         "   --unit-vbat <unit>       Vbat unit (raw|mV|V), default is V (volts)\n"
-	    "   --alt-offset             Altitude offset (meters), default is zero\n"
+        "   --alt-offset             Altitude offset (meters), default is zero\n"
         "   --merge-gps              Merge GPS data into the main CSV log file instead of writing it separately\n"
         "   --simulate-current-meter Simulate a virtual current meter using throttle data\n"
         "   --sim-current-meter-scale   Override the FC's settings for the current meter simulation\n"
@@ -1263,13 +1270,14 @@ void parseCommandlineOptions(int argc, char **argv)
         SETTING_UNIT_ACCELERATION,
         SETTING_UNIT_FRAME_TIME,
         SETTING_UNIT_FLAGS,
-		SETTING_ALT_OFFSET,
+        SETTING_ALT_OFFSET,
     };
 
     while (1)
     {
         static struct option long_options[] = {
             {"help", no_argument, &options.help, 1},
+            {"version", no_argument, &options.version, 1},
             {"raw", no_argument, &options.raw, 1},
             {"debug", no_argument, &options.debug, 1},
             {"limits", no_argument, &options.limits, 1},
@@ -1409,6 +1417,12 @@ int main(int argc, char **argv)
     if (options.help || argc == 1) {
         printUsage(argv[0]);
         return -1;
+    }
+
+    if (options.version) {
+        printVersion();
+        //return 0, use to check if blackbox_decode exists and executable
+        return 0;
     }
 
     if (options.toStdout && argc - optind > 1) {
